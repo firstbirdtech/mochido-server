@@ -2,44 +2,36 @@ package mochido.server
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
+import com.typesafe.config.ConfigFactory
+import mochido.server.bamboo.{BambooChecker, BambooSettings}
+import net.ceedubs.ficus.Ficus._
+import net.ceedubs.ficus.readers.ArbitraryTypeReader._
 
-trait Service {
+object Server extends App {
 
-  implicit def system: ActorSystem
-
-  implicit def materializer: ActorMaterializer
-
-  def eventManager: ActorRef
-
-
-
-  val routes: Route = path("hello") {
-    get {
-      complete("Hello World")
-    }
-  } ~ path("greeter") {
-    val newSource = Source.actorRef(50, OverflowStrategy.dropNew)
-      .mapMaterializedValue(ref => eventManager.tell(EventManager.NewSubscriber(ref), ActorRef.noSender))
-
-    val newFlow = Flow.fromSinkAndSource(Sink.ignore, newSource)
-    handleWebSocketMessages(newFlow)
-  }
-
-}
-
-object Server extends App with Service {
-
-  override implicit val system = ActorSystem()
-  override implicit val materializer = ActorMaterializer()
+  implicit val system = ActorSystem()
+  implicit val materializer = ActorMaterializer()
   implicit val ec = system.dispatcher
 
-  override val eventManager = system.actorOf(EventManager.props)
-  val bambooChecker = system.actorOf(BambooChecker.props(eventManager))
+  val config = ConfigFactory.load()
+  val eventManager = system.actorOf(EventManager.props)
+
+  val bambooSettings = config.as[BambooSettings]("bamboo")
+  val bambooChecker = system.actorOf(BambooChecker.props(bambooSettings, eventManager))
+
+
+  val routes: Route = {
+    path("greeter") {
+      val newSource = Source.actorRef(50, OverflowStrategy.dropBuffer)
+        .mapMaterializedValue(ref => eventManager.tell(EventManager.NewSubscriber(ref), ActorRef.noSender))
+
+      handleWebSocketMessages(Flow.fromSinkAndSource(Sink.ignore, newSource))
+    }
+  }
 
   Http().bindAndHandle(routes, "localhost", 8080)
 }
