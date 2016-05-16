@@ -7,9 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import com.typesafe.config.ConfigFactory
-import mochido.server.bamboo.{BambooChecker, BambooSettings}
-import net.ceedubs.ficus.Ficus._
-import net.ceedubs.ficus.readers.ArbitraryTypeReader._
+import mochido.server.bamboo.BambooModule
 
 object Server extends App {
 
@@ -17,12 +15,10 @@ object Server extends App {
   implicit val materializer = ActorMaterializer()
   implicit val ec = system.dispatcher
 
-  val config = ConfigFactory.load()
+  implicit val config = ConfigFactory.load()
   val eventManager = system.actorOf(EventManager.props)
 
-  val bambooSettings = config.as[BambooSettings]("bamboo")
-  val bambooChecker = system.actorOf(BambooChecker.props(bambooSettings, eventManager))
-
+  BambooModule.start(eventManager)
 
   val routes: Route = {
     path("greeter") {

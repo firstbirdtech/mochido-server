@@ -3,7 +3,7 @@ package mochido.server.bamboo
 import spray.json.DefaultJsonProtocol
 
 
-object BambooJsonProtocol extends DefaultJsonProtocol {
+private[bamboo] object BambooJsonProtocol extends DefaultJsonProtocol {
 
   case class BambooResults(results: BambooResultsPage)
   case class BambooResultsPage(result: List[BambooResult])
