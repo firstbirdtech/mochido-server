@@ -1,0 +1,1 @@
+web:    java -jar -Dbamboo.url=${BAMBOO_URL} -Dbamboo.username=${BAMBOO_USER} -Dbamboo.password=${BAMBOO_PASSWORD} -Dhttp.port=$PORT target/scala-2.11/mochido-server.jar

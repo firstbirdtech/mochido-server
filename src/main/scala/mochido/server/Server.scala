@@ -16,6 +16,7 @@ object Server extends App {
   implicit val ec = system.dispatcher
 
   implicit val config = ConfigFactory.load()
+
   val eventManager = system.actorOf(EventManager.props)
 
   BambooModule.start(eventManager)
@@ -26,8 +27,12 @@ object Server extends App {
         .mapMaterializedValue(ref => eventManager.tell(EventManager.NewSubscriber(ref), ActorRef.noSender))
 
       handleWebSocketMessages(Flow.fromSinkAndSource(Sink.ignore, newSource))
+    } ~ path(PathEnd) {
+      get {
+        complete("hello")
+      }
     }
   }
 
-  Http().bindAndHandle(routes, "localhost", 8080)
+  Http().bindAndHandle(routes, config.getString("http.interface"), config.getInt("http.port"))
 }
